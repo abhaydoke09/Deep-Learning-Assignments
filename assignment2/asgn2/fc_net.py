@@ -177,20 +177,20 @@ class FullyConnectedNet(object):
     # beta2, etc. Scale parameters should be initialized to one and shift      #
     # parameters should be initialized to zero.                                #
     ############################################################################
-    #hidden_dims = [-1] + hidden_dims
-    #for i in range(1,self.num_layers):
-    #    if i==1:
-    #        self.params['W1'] = weight_scale*np.random.randn(input_dim,hidden_dims[i])
-    #        self.params['b1'] = np.zeros(hidden_dims[i])
-    #    else:
-    #        weight_string = 'W'+str(i)
-    #        bias_string = 'b' + str(i)
-    #        self.params[weight_string] = weight_scale*np.random.randn(hidden_dims[i-1],hidden_dims[i])
-    #        self.params[bias_string] = np.zeros(hidden_dims[i])
-    #    if self.use_batchnorm:
-    #       if i != (self.num_layers-1):
-    #            self.params['gamma%d' % (i+1)] = np.ones(hidden_dims[i+1])
-    #            self.params['beta%d' % (i+1)] = np.zeros(hidden_dims[i+1])
+    hidden_dims = [-1] + hidden_dims
+    for i in range(1,self.num_layers):
+        if i==1:
+            self.params['W1'] = weight_scale*np.random.randn(input_dim,hidden_dims[i])
+            self.params['b1'] = np.zeros(hidden_dims[i])
+        else:
+            weight_string = 'W'+str(i)
+            bias_string = 'b' + str(i)
+            self.params[weight_string] = weight_scale*np.random.randn(hidden_dims[i-1],hidden_dims[i])
+            self.params[bias_string] = np.zeros(hidden_dims[i])
+        if self.use_batchnorm:
+           if i != (self.num_layers-1):
+                self.params['gamma%d' % (i+1)] = np.ones(hidden_dims[i+1])
+                self.params['beta%d' % (i+1)] = np.zeros(hidden_dims[i+1])
     
     #modif_hidden_dims = [input_dim] + hidden_dims + [num_classes]
     #print self.num_layers
@@ -200,22 +200,7 @@ class FullyConnectedNet(object):
     #  self.params[b_name] = np.zeros(modif_hidden_dims[i+1])
     #  self.params[W_name] = np.random.normal(scale=weight_scale, size=(modif_hidden_dims[i], modif_hidden_dims[i+1]))
 
-    full_network = [input_dim] + hidden_dims + [num_classes]
-
-    for i in range(0, self.num_layers):
-      weight_str = 'W' + str(i+1)
-      bias_str = 'b' + str(i+1)
-
-      if use_batchnorm and i != (self.num_layers-1):
-        gamma_str = 'gamma' + str(i+1)
-        beta_str = 'beta' + str(i+1)
-        self.params[gamma_str] = np.ones(full_network[i])
-        self.params[beta_str] = np.zeros(full_network[i])
-
-      self.params[bias_str] = np.zeros(full_network[i+1])
-      self.params[weight_str] = np.random.normal(scale=weight_scale, size=(full_network[i], full_network[i+1]))
-
-    #print self.params.keys()
+    print self.params.keys()
       #print W_name
     
     #print self.params
@@ -278,40 +263,27 @@ class FullyConnectedNet(object):
     # layer, etc.                                                              #
     ############################################################################
     
-    self.affine_cache = {}
-    self.relu_cache = {}
-    self.dropout_cache = {}
-    self.batchnorm_cache = {}
-    scores = X
-
-    for i in range(1, self.num_layers+1):
-      layer_num = str(i)
-      weight_str = 'W' + layer_num
-      bias_str = 'b' + layer_num
-      gamma_str = 'gamma' + layer_num
-      beta_str = 'beta' + layer_num
-      batchnorm_str = 'batchnorm' + layer_num
-      dropout_str = 'dropout' + layer_num
-      affine_cache_str = 'affine' + layer_num
-      relu_cache_str = 'relu' + layer_num
-
-      if i == self.num_layers:
-        scores, self.affine_cache[affine_cache_str] = affine_forward(scores, self.params[weight_str], self.params[bias_str])
-      else:
-        if self.use_batchnorm:
-          scores, self.batchnorm_cache[batchnorm_str] = batchnorm_forward(scores, self.params[gamma_str], self.params[beta_str], self.bn_params[i-1])
-        scores, self.affine_cache[affine_cache_str] = affine_forward(scores, self.params[weight_str], self.params[bias_str])
-        scores, self.relu_cache[relu_cache_str]  = relu_forward(scores)
-        if self.use_dropout:
-          scores, self.dropout_cache[dropout_str] = dropout_forward(scores, self.dropout_param)
-
-      #self.cache[cache_str] = cache
-
-    # If test mode return early
-    if mode == 'test':
-      return scores
-
-    loss, grads = 0.0, {}
+    relu_dictionary = {}        # stores all intermediate relu outputs
+    output_dictionary = {}      # stores all intermediate X.W outputs
+    
+    out,cache = affine_forward(X, self.params['W1'],self.params['b1'])
+    output_dictionary['out1'] = out
+    relu_output,cache = relu_forward(out)
+    relu_dictionary['relu1'] = relu_output
+    
+    for i in range(2,self.num_layers):
+        weight_string = 'W'+str(i)
+        bias_string = 'b' + str(i)
+        relu_string = 'relu' + str(i)
+        output_string = 'out' + str(i)
+        
+        if i == self.num_layers-1:
+            scores,cache = affine_forward(relu_output,self.params[weight_string],self.params[bias_string])
+        else:
+            out,cache = affine_forward(relu_output, self.params[weight_string], self.params[bias_string])
+            output_dictionary[output_string] = out
+            relu_output,cache = relu_forward(out)
+            relu_dictionary[relu_string] = relu_output
     
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -321,11 +293,11 @@ class FullyConnectedNet(object):
     if mode == 'test':
       return scores
 
-    #loss, grads = 0.0, {}
-    #loss,dx = softmax_loss(scores,y)
-    #for weights in self.params:
-    #    if 'W' in weights:
-    #        loss += 0.5 * self.reg * np.sum(self.params[weights]*self.params[weights])
+    loss, grads = 0.0, {}
+    loss,dx = softmax_loss(scores,y)
+    for weights in self.params:
+        if 'W' in weights:
+            loss += 0.5 * self.reg * np.sum(self.params[weights]*self.params[weights])
     
     ############################################################################
     # TODO: Implement the backward pass for the fully-connected net. Store the #
@@ -340,41 +312,16 @@ class FullyConnectedNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
-    loss, der = softmax_loss(scores, y)
-    for i in range(0, self.num_layers):
-        weight_str = 'W' + str(i+1)
-        loss += 0.5 * self.reg * np.sum(self.params[weight_str]**2)
-    for i in range(self.num_layers, 0, -1):
-        layer_num = str(i)
-        weight_str = 'W' + layer_num
-        bias_str = 'b' + layer_num
-        gamma_str = 'gamma' + layer_num
-        beta_str = 'beta' + layer_num
-        batchnorm_str = 'batchnorm' + layer_num
-        dropout_str = 'dropout' + layer_num
-        affine_cache_str = 'affine' + layer_num
-        relu_cache_str = 'relu' + layer_num
-
-        #loss += 0.5*self.reg*np.sum(self.params[weight_str]**2) 
-      
-        if i == self.num_layers:
-            der, grads[weight_str], grads[bias_str] = affine_backward(der, self.affine_cache[affine_cache_str])
+    for i in range(self.num_layers-1,0,-1):
+        weight_string = 'W'+str(i)
+        bias_string = 'b' + str(i)
+        output_string = 'out' + str(i-1)
+        relu_string = 'relu' + str(i-1)
+        if i == 1:
+            dx,grads[weight_string],grads[bias_string] = affine_backward(dx,(X,self.params[weight_string],self.params[bias_string]))
         else:
-            if self.use_dropout:
-                der = dropout_backward(der, self.dropout_cache[dropout_str])
-            #print cache_str
-            #print len(self.cache[cache_str])
-            #print i
-            der = relu_backward(der, self.relu_cache[relu_cache_str])
-            der, grads[weight_str], grads[bias_str] = affine_backward(der, self.affine_cache[affine_cache_str])
-            #print  
-    
-            if self.use_batchnorm:
-                der, grads[gamma_str], grads[beta_str] = batchnorm_backward(der, self.batchnorm_cache[batchnorm_str])
-            
-
-        #grads[weight_str] += self.reg*self.params[weight_str]
-
+            dx,grads[weight_string],grads[bias_string] = affine_backward(dx,(relu_dictionary[relu_string],self.params[weight_string],self.params[bias_string]))
+            dx = relu_backward(dx,output_dictionary[output_string])
     
     ############################################################################
     #                             END OF YOUR CODE                             #
