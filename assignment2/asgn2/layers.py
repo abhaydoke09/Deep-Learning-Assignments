@@ -60,7 +60,7 @@ def affine_backward(dout, cache):
   # TODO: Implement the affine backward pass.                                 #
   #############################################################################
   
-  dx = dout.dot(w.T).reshape(x.shape)
+  dx = (dout.dot(w.T)).reshape(x.shape)
   
   dw = X.T.dot(dout)
   db = dout.sum(axis=0)
@@ -108,8 +108,12 @@ def relu_backward(dout, cache):
   #############################################################################
   # TODO: Implement the ReLU backward pass.                                   #
   #############################################################################
-  dout[x<0] = 0
-  dx = dout
+  #dout[x<0] = 0
+  #dx = dout
+
+  dx = np.ones(x.shape)
+  dx = dx * dout
+  dx[x < 0] = 0
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -548,9 +552,10 @@ def max_pool_backward_naive(dout, cache):
   # TODO: Implement the max pooling backward pass                             #
   #############################################################################
   x, pool_param = cache
+  dx = np.zeros(x.shape)
   N,C,H,W = x.shape
-  H_pool = pool_param['pool_height']
-  W_pool = pool_param['pool_width']
+  pool_height = pool_param['pool_height']
+  pool_width = pool_param['pool_width']
   stride = pool_param['stride']
   H_pool = (H - pool_height) / stride + 1
   W_pool = (W - pool_width) / stride + 1
@@ -559,7 +564,10 @@ def max_pool_backward_naive(dout, cache):
     for channel_number in xrange(C):
       for h_pool in xrange(H_pool):
         for w_pool in xrange(W_pool):
-          pooling_patch = x[image_number, channel_number, h_pool * stride : h_pool * stride + pool_height , w_pool * stride : w_pool*stride + pool_width])
+          pooling_patch = x[image_number, channel_number, h_pool * stride : h_pool * stride + pool_height , w_pool * stride : w_pool*stride + pool_width]
+          i,j = np.unravel_index(pooling_patch.argmax(),pooling_patch.shape)
+          dx[image_number, channel_number, h_pool * stride + i, w_pool * stride + j] = dout[image_number, channel_number, h_pool, w_pool]
+
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################

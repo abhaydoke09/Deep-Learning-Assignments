@@ -340,7 +340,7 @@ class FullyConnectedNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
-    loss, der = softmax_loss(scores, y)
+    loss, dx = softmax_loss(scores, y)
     for i in range(0, self.num_layers):
         weight_str = 'W' + str(i+1)
         loss += 0.5 * self.reg * np.sum(self.params[weight_str]**2)
@@ -358,19 +358,19 @@ class FullyConnectedNet(object):
         #loss += 0.5*self.reg*np.sum(self.params[weight_str]**2) 
       
         if i == self.num_layers:
-            der, grads[weight_str], grads[bias_str] = affine_backward(der, self.affine_cache[affine_cache_str])
+            dx, grads[weight_str], grads[bias_str] = affine_backward(dx, self.affine_cache[affine_cache_str])
         else:
             if self.use_dropout:
-                der = dropout_backward(der, self.dropout_cache[dropout_str])
+                dx = dropout_backward(dx, self.dropout_cache[dropout_str])
             #print cache_str
             #print len(self.cache[cache_str])
             #print i
-            der = relu_backward(der, self.relu_cache[relu_cache_str])
-            der, grads[weight_str], grads[bias_str] = affine_backward(der, self.affine_cache[affine_cache_str])
+            dx = relu_backward(dx, self.relu_cache[relu_cache_str])
+            dx, grads[weight_str], grads[bias_str] = affine_backward(dx, self.affine_cache[affine_cache_str])
             #print  
     
             if self.use_batchnorm:
-                der, grads[gamma_str], grads[beta_str] = batchnorm_backward(der, self.batchnorm_cache[batchnorm_str])
+                dx, grads[gamma_str], grads[beta_str] = batchnorm_backward(dx, self.batchnorm_cache[batchnorm_str])
             
 
         #grads[weight_str] += self.reg*self.params[weight_str]
