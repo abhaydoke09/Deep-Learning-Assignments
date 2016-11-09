@@ -373,8 +373,6 @@ class FullyConnectedNet(object):
                 dx, grads[gamma_str], grads[beta_str] = batchnorm_backward(dx, self.batchnorm_cache[batchnorm_str])
             
 
-        #grads[weight_str] += self.reg*self.params[weight_str]
-
     
     ############################################################################
     #                             END OF YOUR CODE                             #
