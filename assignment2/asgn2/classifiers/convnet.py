@@ -9,15 +9,14 @@ class MyConvNet(object):
   """
   A three-layer convolutional network with the following architecture:
 
-
-  I am Trying [conv-relu-conv-relu-pool]x2 - [affine]x2 - [softmax or SVM]
+  conv - relu - 2x2 max pool - affine - relu - affine - softmax
 
   The network operates on minibatches of data that have shape (N, C, H, W)
   consisting of N images, each with height H and width W and with C input
   channels.
   """
 
-  def __init__(self, input_dim=(3, 32, 32), num_filters=32, filter_size=5,
+  def __init__(self, input_dim=(3, 32, 32), num_filters=32, filter_size=7,
                hidden_dim=100, num_classes=10, weight_scale=1e-3, reg=0.0,
                dtype=np.float32):
     """
@@ -38,12 +37,7 @@ class MyConvNet(object):
     self.reg = reg
     self.dtype = dtype
     C,height,width = input_dim
-    conv_param = {'stride': 1, 'pad': (filter_size - 1) / 2}
-    pad = conv_param['pad']
-    stride = conv_param['stride']
-
-    H_output = (height - filter_size + 2 * pad) / conv_param['stride'] + 1
-    W_output = (width - filter_size + 2 * pad) / conv_param['stride'] + 1
+    
     ############################################################################
     # TODO: Initialize weights and biases for the three-layer convolutional    #
     # network. Weights should be initialized from a Gaussian with standard     #
@@ -54,15 +48,14 @@ class MyConvNet(object):
     # hidden affine layer, and keys 'W3' and 'b3' for the weights and biases   #
     # of the output affine layer.                                              #
     ############################################################################
-
-    self.params['W1'] = weight_scale * np.random.randn(num_filters, C, filter_size, filter_size)
+    self.params['W1'] = weight_scale*np.random.randn(num_filters,C,filter_size,filter_size)
     self.params['b1'] = np.zeros(num_filters)
-    self.params['W2'] = weight_scale * np.random.randn(num_filters,num_filters,filter_size,filter_size)
+    self.params['W2'] = weight_scale*np.random.randn(num_filters, num_filters,filter_size,filter_size)
     self.params['b2'] = np.zeros(num_filters)
-
-    self.params['W3'] = weight_scale * np.random.randn(num_filters*(H_output/2)*(W_output/2),hidden_dim)
+    
+    self.params['W3'] = weight_scale*np.random.randn(num_filters*(height/4)*(width/4),hidden_dim)
     self.params['b3'] = np.zeros(hidden_dim)
-    self.params['W4'] = weight_scale * np.random.randn(hidden_dim,num_classes)
+    self.params['W4'] = weight_scale*np.random.randn(hidden_dim,num_classes)
     self.params['b4'] = np.zeros(num_classes)
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -103,12 +96,10 @@ class MyConvNet(object):
     #relu_out2, relu_cache2 = relu_forward(affine_out1)
     #affine_out2, affine_cache2 = affine_forward(relu_out2, W3, b3)
 
-    conv_relu_out, conv_relu_cache = conv_relu_forward(X, W1, b1, conv_param)
-    conv_relu_pool_out, conv_relu_pool_cache = conv_relu_pool_forward(conv_relu_out, W2, b2, conv_param, pool_param)
-
-    affine_out1, affine_cache1 = affine_forward(conv_relu_pool_out, W3, b3)
-    affine_out2, affine_cache2 = affine_forward(affine_out1, W4, b4)
-    scores = affine_out2
+    conv_out, conv_cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+    conv_out, conv_cache2 = conv_relu_pool_forward(conv_out, W2, b2, conv_param, pool_param)
+    affine_relu_out, affine_relu_cache = affine_relu_forward(conv_out, W3, b3)
+    scores, cache = affine_forward(affine_relu_out, W4, b4)
     
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -132,17 +123,15 @@ class MyConvNet(object):
     #dx = relu_backward(dx, relu_cache1)
     #dx, grads['W1'], grads['b1'] = conv_backward_naive(dx, conv_cache1)
 
-    dx, grads['W4'], grads['b4'] = affine_backward(dx, affine_cache2)
-    dx, grads['W3'], grads['b3'] = affine_backward(dx, affine_cache1)
-    dx, grads['W2'], grads['b2'] = conv_relu_pool_backward(dx, conv_relu_pool_cache)
-    dx, grads['W1'], grads['b1'] = conv_relu_backward(dx, conv_relu_cache)
-    
-    
+    dx, grads['W4'], grads['b4'] = affine_backward(dx, cache)
+    dx, grads['W3'], grads['b3'] = affine_relu_backward(dx, affine_relu_cache)
+    dx, grads['W2'], grads['b2'] = conv_relu_pool_backward(dx, conv_cache2)
+    x, grads['W1'], grads['b1'] = conv_relu_pool_backward(dx, conv_cache1)
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
 
-    loss +=  0.5 * self.reg*np.sum(W1*W1) + 0.5*self.reg*np.sum(W2*W2) + 0.5*self.reg*np.sum(W3*W3) + 0.5*self.reg*np.sum(W4*W4)
+    loss +=  0.5 * self.reg*np.sum(W1*W1) + 0.5*self.reg*np.sum(W2*W2) + 0.5*self.reg*np.sum(W3*W3) + 0.5*self.reg*np.sum(W3*W3)
     return loss, grads
 
 

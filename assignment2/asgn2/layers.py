@@ -596,8 +596,8 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
   - out: Output data, of shape (N, C, H, W)
   - cache: Values needed for the backward pass
   """
-
   N, C, H, W = x.shape
+  #print N,C,H,W
   x_reshaped = x.swapaxes(0,1).reshape(C,N*H*W).swapaxes(0,1)
   out, cache = batchnorm_forward(x_reshaped, gamma, beta, bn_param)
   out = out.swapaxes(0,1).reshape(C,N,H,W).swapaxes(0,1)
